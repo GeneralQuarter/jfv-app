@@ -2,14 +2,14 @@ import circle from '@turf/circle';
 import type { FeatureCollection } from 'geojson';
 import { type FC, useMemo } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
-import type { Filter, FilterType } from '../../hooks/use-filters';
+import type { Filter, FilterType } from '../../hooks/useFilters';
+import type { Plant } from '../../lib/db/entities/plant';
 import theme from '../../theme';
-import type { Plant } from '../../types/plant';
 
 type PlantsProps = {
   selectedPlantId: string | undefined;
   showCanopy: boolean;
-  plants: Plant[];
+  plants: Plant[] | undefined;
   filters: Filter[];
 };
 
@@ -18,9 +18,9 @@ const hasTag = (type: FilterType, ids: string[]) => (filters: Filter[]) =>
 
 const plantTagged = (plant: Plant, filters: Filter[]): boolean => {
   return (
-    (plant.sponsor && hasTag('tag', ['sponsored'])(filters)) ||
-    hasTag('sponsor', [plant.sponsor])(filters) ||
-    hasTag('tag', plant.tags)(filters)
+    (plant.godparent && hasTag('tag', ['sponsored'])(filters)) ||
+    (plant.godparent && hasTag('sponsor', [plant.godparent])(filters)) ||
+    hasTag('tag', plant.tags.concat(plant.plantCard?.tags ?? []))(filters)
   );
 };
 
@@ -32,21 +32,23 @@ const plantsToFeatureCollection = (
 ): FeatureCollection => {
   return {
     type: 'FeatureCollection',
-    features: plants.map((plant) =>
-      circle(
-        [plant.position[1], plant.position[0]],
-        (showCanopy || plant.width < 2 ? plant.width : 2) / 2000,
+    features: plants.map((plant) => {
+      const plantCard = plant.plantCard;
+      const diameter = plantCard?.diameter ?? 1;
+      return circle(
+        plant.position ? [plant.position[1], plant.position[0]] : [0, 0],
+        (showCanopy || diameter < 2 ? diameter : 2) / 2000,
         {
           properties: {
             id: plant.id,
             code: plant.code,
-            height: plant.height,
+            height: plantCard?.height ?? 1,
             tagged: plantTagged(plant, filters),
             selected: selectedPlantId === plant.id,
           },
         },
-      ),
-    ),
+      );
+    }),
   };
 };
 
@@ -58,7 +60,12 @@ const Plants: FC<PlantsProps> = ({
 }) => {
   const plantFeatureCollection = useMemo(
     () =>
-      plantsToFeatureCollection(plants, selectedPlantId, showCanopy, filters),
+      plantsToFeatureCollection(
+        plants ?? [],
+        selectedPlantId,
+        showCanopy,
+        filters,
+      ),
     [plants, selectedPlantId, showCanopy, filters],
   );
 

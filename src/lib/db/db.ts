@@ -8,11 +8,7 @@ import { entryToHedge, type Hedge } from './entities/hedge';
 import { entryToPlant, type Plant } from './entities/plant';
 import { entryToPlantCard, type PlantCard } from './entities/plant-card';
 import { entryToRectangle, type Rectangle } from './entities/rectangle';
-
-export type Tag = {
-  id: string;
-  label: string;
-};
+import { contentfulTagToTag, type Tag } from './entities/tag';
 
 const entryToEntity = {
   [plantContentTypeId]: {
@@ -49,10 +45,11 @@ const db = new Dexie('JFV') as Dexie & {
   hedges: EntityTable<Hedge, 'id'>;
 };
 
-db.version(1).stores({
+db.version(2).stores({
   tags: 'id',
   plants: 'id, plantCardId, &code, godparent, plantedAt, declaredDeadAt, *tags',
-  plantCards: 'id, genus, species, varietyOrCultivar, height, diameter, *tags',
+  plantCards:
+    'id, commonName, genus, species, varietyOrCultivar, height, diameter, *tags',
   rectangles: 'id, code, width, length',
   hedges: 'id, name, wateredAt',
 });
@@ -74,9 +71,13 @@ function setNextSyncToken(token: string) {
 }
 
 export async function sync() {
+  if (!navigator.onLine || !import.meta.env.PROD) {
+    return;
+  }
+
   const client = createClient({
-    space: import.meta.env.PUBLIC_CONTENTFUL_SPACE,
-    accessToken: import.meta.env.PUBLIC_CONTENTFUL_ACCESS_TOKEN,
+    space: import.meta.env.VITE_CONTENTFUL_SPACE,
+    accessToken: import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN,
   });
 
   const nextSyncToken = getNextSyncToken();
@@ -135,6 +136,14 @@ export async function sync() {
   if (newNextSyncToken) {
     setNextSyncToken(newNextSyncToken);
   }
+
+  const tagCollection = await client.getTags();
+  const tags = tagCollection.items.map(contentfulTagToTag);
+  tags.push({
+    id: 'sponsored',
+    label: 'Parrainé',
+  });
+  await db.tags.bulkPut(tags);
 }
 
 export { db };

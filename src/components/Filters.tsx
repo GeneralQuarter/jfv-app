@@ -3,7 +3,7 @@ import FaceIcon from '@mui/icons-material/Face';
 import TagIcon from '@mui/icons-material/Tag';
 import { Chip, Stack, styled } from '@mui/material';
 import type { FC } from 'react';
-import type { Filter, FilterType } from '../hooks/use-filters';
+import type { Filter, FilterType } from '../hooks/useFilters';
 
 type FiltersProps = {
   filters: Filter[];

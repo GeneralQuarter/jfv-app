@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 export default function useDateTimeFormat(
-  value: string | undefined,
+  value: string | Date | undefined,
   locales?: Intl.LocalesArgument,
   options?: Intl.DateTimeFormatOptions,
 ) {

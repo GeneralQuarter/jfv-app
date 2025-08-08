@@ -16,14 +16,14 @@ import {
   Typography,
 } from '@mui/material';
 import { type FC, useCallback, useMemo, useRef, useState } from 'react';
-import useSearchWorker from '../hooks/use-search-worker';
-import type { Plant } from '../types/plant';
+import useSearchWorker from '../hooks/useSearchWorker';
+import type { Plant } from '../lib/db/entities/plant';
+import type { Tag } from '../lib/db/entities/tag';
 import type { SearchEntry } from '../types/search-entry';
-import type { Tags } from '../types/tags';
 
 type SearchProps = {
-  plants: Plant[];
-  tags: Tags;
+  plants: Plant[] | undefined;
+  tags: Tag[];
   onEntryClick: (groupId: string, entry: SearchEntry) => void;
 };
 
@@ -85,7 +85,7 @@ const groupIconByGroupId: Record<string, SvgIconComponent> = {
 const Search: FC<SearchProps> = ({ plants, tags, onEntryClick }) => {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [resultGroups] = useSearchWorker(plants, tags, searchTerm);
+  const resultGroups = useSearchWorker(plants, tags, searchTerm);
   const showResultsPopover = useMemo(() => searchTerm.length > 0, [searchTerm]);
 
   const entryClicked = useCallback(

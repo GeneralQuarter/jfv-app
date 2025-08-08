@@ -2,6 +2,7 @@ import type { PlantCommonInfoEntry } from '../../contentful/plant-common-info.en
 
 export type PlantCard = {
   id: string;
+  commonName: string;
   genus: string;
   species: string;
   varietyOrCultivar: string;
@@ -14,6 +15,7 @@ export type PlantCard = {
 export function entryToPlantCard(entry: PlantCommonInfoEntry): PlantCard {
   return {
     id: entry.sys.id,
+    commonName: entry.fields.commonName.fr ?? '',
     genus: entry.fields.genus.fr ?? '',
     species: entry.fields.species.fr ?? '',
     varietyOrCultivar: entry.fields.varietyCultivar?.fr ?? '',

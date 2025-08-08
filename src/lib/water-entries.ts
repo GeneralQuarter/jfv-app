@@ -3,7 +3,7 @@ import ErrorModal from '../components/modals/ErrorModal';
 import { authenticatedApiCall } from './api';
 import { clearPassword, getPassword } from './password';
 
-export default async function waterHedges(hedgeIds: string[]): Promise<void> {
+export default async function waterEntries(entryIds: string[]): Promise<void> {
   const password = await getPassword();
 
   if (!password) {
@@ -12,7 +12,7 @@ export default async function waterHedges(hedgeIds: string[]): Promise<void> {
 
   const result = await authenticatedApiCall('/water', password, {
     method: 'POST',
-    body: JSON.stringify(hedgeIds),
+    body: JSON.stringify(entryIds),
   });
 
   switch (result) {
@@ -20,7 +20,7 @@ export default async function waterHedges(hedgeIds: string[]): Promise<void> {
       return;
     case 'AuthError':
       clearPassword();
-      return waterHedges(hedgeIds);
+      return waterEntries(entryIds);
     case 'Error':
       return NiceModal.show(ErrorModal, {
         message:

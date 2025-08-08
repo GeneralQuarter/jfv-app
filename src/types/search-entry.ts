@@ -3,7 +3,6 @@ export type SearchEntry = {
   primaryText: string;
   secondaryText?: string;
   tertiaryText?: string;
-  searchTerms: string[];
 };
 
 export type SearchEntryGroup = {

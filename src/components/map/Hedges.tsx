@@ -2,10 +2,10 @@ import buffer from '@turf/buffer';
 import type { FeatureCollection } from 'geojson';
 import { type FC, useMemo } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
-import type { Hedge } from '../../types/hedge';
+import type { Hedge } from '../../lib/db/entities/hedge';
 
 type HedgesProps = {
-  hedges: Hedge[];
+  hedges: Hedge[] | undefined;
 };
 
 const hedgesToFeatureCollection = (hedges: Hedge[]): FeatureCollection => {
@@ -16,7 +16,8 @@ const hedgesToFeatureCollection = (hedges: Hedge[]): FeatureCollection => {
       ...buffer(
         {
           type: 'LineString',
-          coordinates: hedge.coords.map((coords) => [coords[1], coords[0]]),
+          coordinates:
+            hedge.coords?.map((coords) => [coords[1], coords[0]]) ?? [],
         },
         0.8 / 1000,
       ),
@@ -31,7 +32,7 @@ const hedgesToFeatureCollection = (hedges: Hedge[]): FeatureCollection => {
 
 const Hedges: FC<HedgesProps> = ({ hedges }) => {
   const hedgeFeatureCollection = useMemo(
-    () => hedgesToFeatureCollection(hedges),
+    () => hedgesToFeatureCollection(hedges ?? []),
     [hedges],
   );
 

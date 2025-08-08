@@ -18,15 +18,16 @@ import PlantDetails from './components/PlantDetails';
 import ReloadPrompt from './components/ReloadPrompt';
 import Search from './components/Search';
 import SelectionDrawer from './components/SelectionDrawer';
-import useFilters from './hooks/use-filters';
-import useGeolocation from './hooks/use-geolocation';
-import useHedges from './hooks/use-hedges';
-import usePlants from './hooks/use-plants';
-import useRectangles from './hooks/use-rectangles';
-import useSelectedPlant from './hooks/use-selected-plant';
-import useSelectedPlantId from './hooks/use-selected-plant-id';
-import useTags from './hooks/use-tags';
-import useToggle from './hooks/use-toggle';
+import useFilters from './hooks/useFilters';
+import useGeolocation from './hooks/useGeolocation';
+import useHedges from './hooks/useHedges';
+import usePlants from './hooks/usePlants';
+import useRectangles from './hooks/useRectangles';
+import useSelectedPlant from './hooks/useSelectedPlant';
+import useSelectedPlantId from './hooks/useSelectedPlantId';
+import useSyncDb from './hooks/useSyncDb';
+import useTags from './hooks/useTags';
+import useToggle from './hooks/useToggle';
 import type { SearchEntry } from './types/search-entry';
 
 const FullContainer = styled('div')({
@@ -42,10 +43,11 @@ const FixedFab = styled(Fab)({
 });
 
 const App: FC = () => {
+  useSyncDb();
   const plants = usePlants();
   const rectangles = useRectangles();
   const hedges = useHedges();
-  const tags = useTags();
+  const [tags, tagMap] = useTags();
   const [bearing, setBearing] = useState<number>(0);
   const [selectedPlantId, setSelectedPlantId, toggleSelectedPlantId] =
     useSelectedPlantId();
@@ -86,9 +88,9 @@ const App: FC = () => {
 
   const flyToPlant = useCallback(
     (plantId: string) => {
-      const plant = plants.find((p) => p.id === plantId);
+      const plant = (plants || []).find((p) => p.id === plantId);
 
-      if (plant) {
+      if (plant?.position) {
         flyTo(plant.position);
       }
     },
@@ -153,7 +155,7 @@ const App: FC = () => {
         title={selectedPlant?.code}
         placeholder="Sélectionnez un arbre"
       >
-        {selectedPlant && <PlantDetails plant={selectedPlant} tags={tags} />}
+        {selectedPlant && <PlantDetails plant={selectedPlant} tags={tagMap} />}
       </SelectionDrawer>
       <FixedFab
         sx={(theme) => ({

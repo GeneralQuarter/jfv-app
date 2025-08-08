@@ -1,10 +1,8 @@
-import type { Plant } from './types/plant';
+import MiniSearch, { type SearchOptions } from 'minisearch';
+import type { Plant } from './lib/db/entities/plant';
+import type { Tag } from './lib/db/entities/tag';
 import type { SearchEntry, SearchEntryGroup } from './types/search-entry';
 import type { SearchWorkerMessage } from './types/search-worker-message';
-import type { Tags } from './types/tags';
-
-let searchEntryGroups: SearchEntryGroup[] = [];
-let resultsCache: Record<string, SearchEntryGroup[]> = {};
 
 function normalizeSearchTerm(term: string): string {
   return term
@@ -13,65 +11,41 @@ function normalizeSearchTerm(term: string): string {
     .toLowerCase();
 }
 
-function normalizeSearchTerms(terms: string[]): string[] {
-  return terms.map(normalizeSearchTerm);
-}
+let resultsCache: Record<string, SearchEntryGroup[]> = {};
 
-function data({ plants, tags }: { plants: Plant[]; tags: Tags }) {
-  const sponsors = new Set<string>();
-
-  const plantEntries: SearchEntry[] = plants.map((plant) => {
-    if (plant.sponsor) {
-      sponsors.add(plant.sponsor);
+const plantMiniSearch: MiniSearch<Plant> = new MiniSearch({
+  fields: ['code', 'godparent', 'commonName'],
+  extractField(document, fieldName) {
+    if (fieldName === 'commonName') {
+      return document.plantCard?.commonName ?? '';
     }
 
-    return {
-      id: plant.id,
-      primaryText: plant.code,
-      secondaryText: plant.commonName,
-      tertiaryText: plant.sponsor,
-      searchTerms: normalizeSearchTerms(
-        [plant.code, plant.fullLatinName, plant.commonName].concat(
-          plant.sponsor ? [plant.sponsor] : [],
-        ),
-      ),
-    };
-  });
+    // @ts-ignore field should be of type string
+    return (document[fieldName] as string) ?? '';
+  },
+  storeFields: ['code', 'godparent', 'commonName'],
+  processTerm: normalizeSearchTerm,
+});
+const tagMiniSearch: MiniSearch<Tag> = new MiniSearch({
+  fields: ['label'],
+  storeFields: ['label'],
+  processTerm: normalizeSearchTerm,
+});
 
-  const sponsorEntries: SearchEntry[] = [...sponsors].map((sponsor) => ({
-    id: sponsor,
-    primaryText: sponsor,
-    searchTerms: normalizeSearchTerms([sponsor]),
-  }));
+const searchOptions: SearchOptions = {
+  prefix: true,
+};
 
-  searchEntryGroups = [
-    {
-      id: 'tags',
-      headerText: 'Tags',
-      entries: [
-        {
-          id: 'sponsored',
-          primaryText: 'Parrainé',
-          searchTerms: ['parraine'],
-        },
-        ...Object.entries(tags).map<SearchEntry>(([tagId, label]) => ({
-          id: tagId,
-          primaryText: label,
-          searchTerms: normalizeSearchTerms([label]),
-        })),
-      ],
-    },
-    {
-      id: 'sponsors',
-      headerText: 'Parrains/Marraines',
-      entries: sponsorEntries,
-    },
-    {
-      id: 'plants',
-      headerText: 'Plantes',
-      entries: plantEntries,
-    },
-  ];
+function data({ plants, tags }: { plants?: Plant[]; tags?: Tag[] }) {
+  if (plants) {
+    plantMiniSearch.removeAll();
+    plantMiniSearch.addAll(plants);
+  }
+
+  if (tags) {
+    tagMiniSearch.removeAll();
+    tagMiniSearch.addAll(tags);
+  }
 }
 
 let timeoutId: number | undefined;
@@ -82,6 +56,56 @@ function debounceSearch(searchTerm: string) {
   timeoutId = setTimeout(() => {
     search(searchTerm);
   }, 300);
+}
+
+function executeSearch(searchTerm: string): SearchEntryGroup[] {
+  const plantResults = plantMiniSearch.search(searchTerm, searchOptions) ?? [];
+  const godparents = new Set<string>();
+
+  const plantEntries: SearchEntry[] = plantResults
+    .map((pr) => {
+      if (pr.godparent) {
+        godparents.add(pr.godparent);
+      }
+
+      return {
+        id: pr.id,
+        primaryText: pr.code as string,
+        secondaryText: pr.commonName,
+        tertiaryText: pr.godparent,
+      };
+    })
+    .sort((a, b) => a.primaryText.localeCompare(b.primaryText))
+    .slice(0, 100);
+
+  const godparentEntries: SearchEntry[] = [...godparents].map((godparent) => ({
+    id: godparent,
+    primaryText: godparent,
+  }));
+
+  const tagResults = tagMiniSearch.search(searchTerm, searchOptions) ?? [];
+  const tagEntries: SearchEntry[] = tagResults.map((tr) => ({
+    id: tr.id,
+    primaryText: tr.label,
+  }));
+
+  return [
+    {
+      id: 'tags',
+      headerText: 'Tags',
+      entries: tagEntries,
+    },
+    {
+      id: 'sponsors',
+      headerText: 'Parrains/Marraines',
+      entries: godparentEntries,
+    },
+    {
+      id: 'plants',
+      headerText: 'Plantes',
+      entries: plantEntries,
+    },
+  ].filter((g) => g.entries.length > 0);
 }
 
 function search(searchTerm: string) {
@@ -97,17 +121,7 @@ function search(searchTerm: string) {
     return;
   }
 
-  const results = searchEntryGroups
-    .map((group) => ({
-      ...group,
-      entries: group.entries
-        .filter((entry) =>
-          entry.searchTerms.some((t) => t.includes(normalizedTerm)),
-        )
-        .sort((a, b) => a.primaryText.localeCompare(b.primaryText))
-        .slice(0, 100),
-    }))
-    .filter((group) => group.entries.length > 0);
+  const results = executeSearch(normalizedTerm);
 
   if (Object.keys(resultsCache).length > 100) {
     resultsCache = {};

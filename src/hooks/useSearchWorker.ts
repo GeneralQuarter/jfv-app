@@ -1,27 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
+import type { Plant } from '../lib/db/entities/plant';
+import type { Tag } from '../lib/db/entities/tag';
 import searchWorkerUrl from '../searchWorker?worker&url';
-import type { Plant } from '../types/plant';
 import type { SearchEntryGroup } from '../types/search-entry';
 import type {
   LoadDataSearchWorkerMessage,
   SearchForSearchWorkerMessage,
 } from '../types/search-worker-message';
-import type { Tags } from '../types/tags';
 
 export default function useSearchWorker(
-  plants: Plant[],
-  tags: Tags,
+  plants: Plant[] | undefined,
+  tags: Tag[],
   searchTerm: string,
 ) {
   const [results, setResults] = useState<SearchEntryGroup[]>([]);
   const workerRef = useRef<Worker>(null);
 
   useEffect(() => {
-    if (
-      workerRef.current === null ||
-      plants.length === 0 ||
-      Object.keys(tags).length === 0
-    ) {
+    if (workerRef.current === null || !plants || plants.length === 0) {
       return;
     }
 
@@ -29,15 +25,28 @@ export default function useSearchWorker(
       type: 'data',
       data: {
         plants,
+      },
+    };
+
+    workerRef.current.postMessage(message);
+  }, [plants]);
+
+  useEffect(() => {
+    if (workerRef.current === null || tags.length === 0) {
+      return;
+    }
+
+    const message: LoadDataSearchWorkerMessage = {
+      type: 'data',
+      data: {
         tags,
       },
     };
 
     workerRef.current.postMessage(message);
-  }, [plants, tags]);
+  }, [tags]);
 
   useEffect(() => {
-    // @ts-expect-error setting the worker
     workerRef.current = new Worker(searchWorkerUrl, { type: 'module' });
 
     workerRef.current.addEventListener(
@@ -65,5 +74,5 @@ export default function useSearchWorker(
     workerRef.current.postMessage(message);
   }, [searchTerm]);
 
-  return [results];
+  return results;
 }

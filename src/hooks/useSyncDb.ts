@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sync } from '../lib/db/db';
 
-export function useSyncDb() {
+export default function useSyncDb() {
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {

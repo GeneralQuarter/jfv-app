@@ -1,8 +1,9 @@
 import { Chip, Stack, Typography } from '@mui/material';
-import type { FC } from 'react';
-import useDateTimeFormat from '../hooks/use-date-time-format';
-import useNumberFormat from '../hooks/use-number-format';
-import type { Plant } from '../types/plant';
+import { type FC, useMemo } from 'react';
+import useDateTimeFormat from '../hooks/useDateTimeFormat';
+import useFullLatinName from '../hooks/useFullLatinName';
+import useNumberFormat from '../hooks/useNumberFormat';
+import type { Plant } from '../lib/db/entities/plant';
 import type { Tags } from '../types/tags';
 
 type PlantDetailsProps = {
@@ -15,14 +16,18 @@ const PlantDetails: FC<PlantDetailsProps> = ({ plant, tags }) => {
     dateStyle: 'long',
     timeStyle: 'short',
   });
-  const width = useNumberFormat(plant.width, 'fr', {
+  const diameter = useNumberFormat(plant.plantCard?.diameter, 'fr', {
     style: 'unit',
     unit: 'meter',
   });
-  const height = useNumberFormat(plant.height, 'fr', {
+  const height = useNumberFormat(plant.plantCard?.height, 'fr', {
     style: 'unit',
     unit: 'meter',
   });
+  const fullLatinName = useFullLatinName(plant.plantCard);
+  const plantTagIds = useMemo<string[]>(() => {
+    return plant.tags.concat(plant.plantCard?.tags ?? []);
+  }, [plant.tags, plant.plantCard?.tags]);
 
   return (
     <Stack>
@@ -34,21 +39,21 @@ const PlantDetails: FC<PlantDetailsProps> = ({ plant, tags }) => {
           </Typography>
         </Typography>
       )}
-      <Typography variant="h5">{plant.fullLatinName}</Typography>
-      <Typography variant="subtitle1">{plant.commonName}</Typography>
+      <Typography variant="h5">{fullLatinName}</Typography>
+      <Typography variant="subtitle1">{plant.plantCard?.commonName}</Typography>
       <Typography mt={1}>
-        {width} x {height}
+        {diameter} x {height}
       </Typography>
-      {plant.sponsor && (
+      {plant.godparent && (
         <Typography variant="body2">
           Parrainé par{' '}
           <Typography color="secondary" component="span">
-            {plant.sponsor}
+            {plant.godparent}
           </Typography>
         </Typography>
       )}
       <Stack flexDirection="row" gap={1} mt={2} flexWrap="wrap">
-        {plant.tags.map((t) => (
+        {plantTagIds.map((t) => (
           <Chip key={t} label={tags[t]} />
         ))}
       </Stack>

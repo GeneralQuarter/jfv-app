@@ -1,10 +1,10 @@
 import type { FeatureCollection } from 'geojson';
 import { type FC, useMemo } from 'react';
 import { Layer, Source } from 'react-map-gl/maplibre';
-import type { Rectangle } from '../../types/rectangle';
+import type { Rectangle } from '../../lib/db/entities/rectangle';
 
 type RectanglesProps = {
-  rectangles: Rectangle[];
+  rectangles: Rectangle[] | undefined;
 };
 
 const rectanglesToFeatureCollection = (
@@ -16,7 +16,9 @@ const rectanglesToFeatureCollection = (
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: [rectangle.coords.map((coords) => [coords[1], coords[0]])],
+        coordinates: [
+          rectangle.coords?.map((coords) => [coords[1], coords[0]]) ?? [],
+        ],
       },
       properties: {},
     })),
@@ -25,7 +27,7 @@ const rectanglesToFeatureCollection = (
 
 const Rectangles: FC<RectanglesProps> = ({ rectangles }) => {
   const rectangleFeatureCollection = useMemo(
-    () => rectanglesToFeatureCollection(rectangles),
+    () => rectanglesToFeatureCollection(rectangles ?? []),
     [rectangles],
   );
 
